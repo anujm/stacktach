@@ -16,8 +16,10 @@ def _safe_get(Model, **kwargs):
     return object
 
 
-def get_or_create_deployment(name):
-    return models.Deployment.objects.get_or_create(name=name)
+def get_or_create_deployment(name, region, data_center):
+    return models.Deployment.objects.get_or_create(name=name,
+                                                   region=region,
+                                                   data_center=data_center)
 
 
 def create_rawdata(**kwargs):
@@ -78,3 +80,9 @@ def create_instance_exists(**kwargs):
 
 def save(obj):
     obj.save()
+
+
+def get_data_center_and_region_for_exists(exists):
+    rawdata = models.RawData.objects.filter(id=exists.raw.id)[0]
+    deployment = models.Deployment.objects.filter(id=rawdata.deployment.id)[0]
+    return {'region': deployment.region, 'data_center': deployment.data_center}

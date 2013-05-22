@@ -19,6 +19,8 @@ from django.db import models
 
 class Deployment(models.Model):
     name = models.CharField(max_length=50)
+    region = models.CharField(max_length=30)
+    data_center = models.CharField(max_length=30)
 
     def __repr__(self):
         return self.name

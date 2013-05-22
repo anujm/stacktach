@@ -17,11 +17,13 @@
 # to set TENANT_ID and URL to point to your StackTach web server.
 
 import datetime
-import kombu
-import kombu.entity
-import kombu.mixins
 import sys
 import time
+
+import kombu
+
+import kombu.mixins
+
 
 try:
     import ujson as json
@@ -148,9 +150,10 @@ def run(deployment_config):
     virtual_host = deployment_config.get('rabbit_virtual_host', '/')
     durable = deployment_config.get('durable_queue', True)
     queue_arguments = deployment_config.get('queue_arguments', {})
+    region = deployment_config.get('region')
+    data_center = deployment_config.get('data_center')
     exit_on_exception = deployment_config.get('exit_on_exception', False)
-
-    deployment, new = db.get_or_create_deployment(name)
+    deployment, new = db.get_or_create_deployment(name, region, data_center)
 
     print "Starting worker for '%s'" % name
     LOG.info("%s: %s %s %s %s" % (name, host, port, user_id, virtual_host))

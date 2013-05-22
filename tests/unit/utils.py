@@ -39,6 +39,20 @@ MESSAGE_ID_2 = "4d596126-0f04-4329-865f-7b9a7bd69bcf"
 REQUEST_ID_1 = 'req-611a4d70-9e47-4b27-a95e-27996cc40c06'
 REQUEST_ID_2 = 'req-a951dec0-52ee-425d-9f56-d68bd1ad00ac'
 REQUEST_ID_3 = 'req-039a33f7-5849-4406-8166-4db8cd085f52'
+test_xml_generator_values = {'tenant_id': 2882,
+                             'id': 'e53d007a-fc23-11e1-975c-cfa6b29bb814',
+                             'resource_id': '56',
+                             'data_center': 'DFW1',
+                             'region': 'DFW',
+                             'start_time':'2012-09-15 11:51:11',
+                             'end_time': '2012-09-16 11:51:11',
+                             'resource_type': 'SERVER',
+                             'is_red_hat': 'true', 'is_ms_sql': 'false',
+                             'is_ms_sql_web': 'false', 'is_windows': 'false',
+                             'is_se_linux': 'false', 'is_managed': 'false',
+                             'bandwidth_in': 1001,
+                             'bandwidth_out': 19992,
+                             'flavor': 10}
 
 
 def decimal_utc(t = datetime.datetime.utcnow()):
@@ -122,3 +136,33 @@ def create_tracker(mox, request_id, lifecycle, start, last_timing=None,
     tracker.last_timing=last_timing
     tracker.duration=duration
     return tracker
+
+
+def generate_verified_message_in_cuf_format(values, message_id, original_message_id, event_type):
+    test_xml_generator_values.update(values)
+    cuf_xml =("""<?xml version="1.0" encoding="UTF-8"?>"""
+    """<?atom feed="nova/events"?>"""
+    """<atom:entry xmlns:atom="http://www.w3.org/2005/Atom">"""
+    """<atom:title>Server</atom:title>"""
+    """<atom:content type="application/xml">"""
+    """<event xmlns="http://docs.rackspace.com/core/event" """
+    """xmlns:nova="http://docs.rackspace.com/event/nova" """
+    """version="1" tenantId="%(tenant_id)s" """
+    """id="%(id)s" resourceId="%(resource_id)s" type="USAGE" """
+    """dataCenter="%(data_center)s" region="%(region)s" """
+    """startTime="%(start_time)s" endTime="%(end_time)s">"""
+    """<nova:product version="1" serviceCode="CloudServersOpenStack" """
+    """resourceType="%(resource_type)s" flavor="%(flavor)s" """
+    """isRedHat="%(is_red_hat)s" isMSSQL="%(is_ms_sql)s" """
+    """isMSSQLWeb="%(is_ms_sql_web)s" isWindows="%(is_windows)s" """
+    """isSELinux="%(is_se_linux)s" isManaged="%(is_managed)s" """
+    """bandwidthIn="%(bandwidth_in)s" bandwidthOut="%(bandwidth_out)s"/>"""
+    """</event></atom:content></atom:entry>""") % test_xml_generator_values
+
+    message = {}
+    message['original_message_id'] = original_message_id
+    message['event_type'] = event_type
+    message['message_id'] = message_id
+    message['payload'] = cuf_xml
+
+    return message

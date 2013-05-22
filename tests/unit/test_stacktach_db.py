@@ -114,9 +114,11 @@ class StacktachDBTestCase(unittest.TestCase):
 
     def test_get_or_create_deployment(self):
         deployment = self.mox.CreateMockAnything()
-        models.Deployment.objects.get_or_create(name='test').AndReturn(deployment)
+        models.Deployment.objects.get_or_create(
+            name='test', data_center='DFW1', region='DFW').AndReturn(deployment)
         self.mox.ReplayAll()
-        returned = db.get_or_create_deployment('test')
+        returned = db.get_or_create_deployment(
+            'test', data_center='DFW1', region='DFW')
         self.assertEqual(returned, deployment)
         self.mox.VerifyAll()
 

@@ -18,18 +18,17 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
-import datetime
 import decimal
 
 from django.utils import unittest
 
-import datetime_to_decimal
 from models import *
+from stacktach import db
+from stacktach import factories
 import test_utils
 from test_utils import INSTANCE_ID_1
 from test_utils import INSTANCE_ID_2
 from test_utils import MESSAGE_ID_1
-from test_utils import MESSAGE_ID_2
 from test_utils import REQUEST_ID_1
 from test_utils import REQUEST_ID_2
 from test_utils import REQUEST_ID_3
@@ -905,6 +904,7 @@ class ViewsUsageWorkflowTestCase(unittest.TestCase):
         views.aggregate_usage(start_raw)
 
         usages = InstanceUsage.objects.all().order_by('id')
+        usages = InstanceUsage.objects.all().order_by('id')
         self.assertEqual(len(usages), 3)
         usage_before_resize = usages[0]
         usage_after_resize = usages[1]
@@ -915,3 +915,16 @@ class ViewsUsageWorkflowTestCase(unittest.TestCase):
                            resize_launched, REQUEST_ID_2)
         self.assertOnUsage(usage_after_revert, INSTANCE_ID_1, '1', end_time,
                            REQUEST_ID_3)
+
+
+class StacktachDbTestCase(unittest.TestCase):
+
+    def test_get_data_center_and_region_for_exists(self):
+        deployment = factories.DeploymentFactory.create(region='DFW1',
+                                                        data_center ='DFW')
+        raw_data = factories.RawDataFactory.create(deployment=deployment)
+        exists = factories.InstanceExists.create(raw=raw_data)
+
+        for_exists = db.get_data_center_and_region_for_exists(exists)
+        self.assertEquals(for_exists,
+                          {'region':'DFW1' ,'data_center': 'DFW'})

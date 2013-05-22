@@ -21,6 +21,7 @@
 import argparse
 import datetime
 import json
+import logging
 import os
 import sys
 from time import sleep
@@ -31,6 +32,7 @@ import kombu.common
 import kombu.entity
 import kombu.pools
 import multiprocessing
+from stacktach.notification import Notification
 
 POSSIBLE_TOPDIR = os.path.normpath(os.path.join(os.path.abspath(sys.argv[0]),
                                                 os.pardir, os.pardir))
@@ -43,6 +45,7 @@ stacklog.set_default_logger_name('verifier')
 LOG = stacklog.get_logger()
 
 from stacktach import models
+from stacktach import db
 from stacktach import datetime_to_decimal as dt
 from verifier import AmbiguousResults
 from verifier import FieldMismatch
@@ -56,8 +59,8 @@ def _list_exists(ending_max=None, status=None):
         params['audit_period_ending__lte'] = dt.dt_to_decimal(ending_max)
     if status:
         params['status'] = status
-    return models.InstanceExists.objects.select_related()\
-                                .filter(**params).order_by('id')
+    return models.InstanceExists.objects.select_related() \
+        .filter(**params).order_by('id')
 
 
 def _find_launch(instance, launched):
@@ -140,8 +143,8 @@ def _verify_for_launch(exist):
     if exist.usage:
         launch = exist.usage
     else:
-        if models.InstanceUsage.objects\
-                 .filter(instance=exist.instance).count() > 0:
+        if models.InstanceUsage.objects \
+            .filter(instance=exist.instance).count() > 0:
             launches = _find_launch(exist.instance,
                                     dt.dt_from_decimal(exist.launched_at))
             count = launches.count()
@@ -285,11 +288,35 @@ def send_verified_notification(exist, connection, exchange, routing_keys=None):
     json_body[1]['event_type'] = 'compute.instance.exists.verified.old'
     json_body[1]['original_message_id'] = json_body[1]['message_id']
     json_body[1]['message_id'] = str(uuid.uuid4())
-    if routing_keys is None:
-        _send_notification(json_body[1], json_body[0], connection, exchange)
-    else:
-        for key in routing_keys:
-            _send_notification(json_body[1], key, connection, exchange)
+
+    routing_keys = routing_keys or [json_body[0]]
+    _send_notification_for_routing_keys(connection, json_body[1], exchange,
+                                        routing_keys)
+
+
+def _send_notification_for_routing_keys(connection, payload, exchange,
+                                        routing_keys):
+    for key in routing_keys:
+        _send_notification(payload, key, connection, exchange)
+
+
+def send_verified_notification_in_cuf_format(exist, connection, exchange,
+                                             routing_keys=None):
+    try:
+        message = json.loads(exist.raw.json)
+        deployment_info = db.get_data_center_and_region_for_exists(exist)
+        cuf_xml = Notification(message). \
+            convert_to_verified_message_in_cuf_format(deployment_info)
+    except Exception as exc:
+        LOG.exception(
+            "Exception while sending verification for exists message for instance "
+            "%(instance)s with raw_id %(raw_id)s: %(exception)s "
+            % {'instance': exist.instance, 'raw_id': exist.raw.id,
+               'exception': exc.message})
+        return
+    routing_keys = routing_keys or [message[0]]
+    _send_notification_for_routing_keys(connection, cuf_xml, exchange,
+                                        routing_keys)
 
 
 def _create_exchange(name, type, exclusive=False, auto_delete=False,
@@ -342,6 +369,8 @@ def run(config):
                 if verified:
                     send_verified_notification(exist, conn, exchange,
                                                routing_keys=routing_keys)
+                    send_verified_notification_in_cuf_format(
+                        exist, conn, exchange, routing_keys=routing_keys)
 
             _run(config, pool, callback=callback)
     else:
@@ -388,7 +417,7 @@ def run_once(config):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=
-                                     "Stacktach Instance Exists Verifier")
+    "Stacktach Instance Exists Verifier")
     parser.add_argument('--tick-time',
                         help='Time in seconds the verifier will sleep before'
                              'it will check for new exists records.',

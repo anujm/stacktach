@@ -31,7 +31,9 @@ import mox
 import multiprocessing
 
 from stacktach import datetime_to_decimal as dt
+from stacktach import db
 from stacktach import models
+from tests.unit import utils
 from utils import INSTANCE_ID_1
 from utils import TENANT_ID_1
 from utils import TENANT_ID_2
@@ -166,8 +168,8 @@ class VerifierTestCase(unittest.TestCase):
         exist.launched_at = decimal.Decimal('1.1')
         exist.instance_type_id = 2
         results = self.mox.CreateMockAnything()
-        models.InstanceUsage.objects.filter(instance=INSTANCE_ID_1)\
-                                    .AndReturn(results)
+        models.InstanceUsage.objects.filter(instance=INSTANCE_ID_1) \
+            .AndReturn(results)
         results.count().AndReturn(1)
         filters = {
             'instance': INSTANCE_ID_1,
@@ -284,7 +286,7 @@ class VerifierTestCase(unittest.TestCase):
             'launched_at__gte': decimal.Decimal('1.0'),
             'launched_at__lte': decimal.Decimal('1.999999'),
             'deleted_at__lte': decimal.Decimal('1.1')
-            }
+        }
         results = self.mox.CreateMockAnything()
         models.InstanceDeletes.objects.filter(**filters).AndReturn(results)
         results.count().AndReturn(0)
@@ -532,6 +534,65 @@ class VerifierTestCase(unittest.TestCase):
         dbverifier.send_verified_notification(exist, exchange, connection)
         self.mox.VerifyAll()
 
+    def test_send_verified_notification_with_default_routing_keys_in_cuf(self):
+        connection = self.mox.CreateMockAnything()
+        exchange = self.mox.CreateMockAnything()
+        exist = self.mox.CreateMockAnything()
+        exist.raw = self.mox.CreateMockAnything()
+        exist.raw_id = self.mox.CreateMockAnything()
+        exist_dict = [
+            'monitor.info',
+            {
+                'event_type': 'test',
+                'message_id': 'some_uuid',
+                '_unique_id': 'e53d007a-fc23-11e1-975c-cfa6b29bb814',
+                'payload':
+                    {'tenant_id': '2882',
+                     'access_ip_v4': '5.79.20.138',
+                     'access_ip_v6': '2a00:1a48:7804:0110:a8a0:fa07:ff08:157a',
+                     'audit_period_beginning': '2012-09-15 11:51:11',
+                     'audit_period_ending': '2012-09-16 11:51:11',
+                     'bandwidth': {'private': {'bw_in': 0, 'bw_out': 264902},
+                                   'public': {'bw_in': 1001, 'bw_out': 19992}
+                     },
+                     'image_meta': {'com.rackspace__1__options': '1'},
+                     'instance_id': '56',
+                     'instance_type_id': '10',
+                     'launched_at': '2012-09-15 11:51:11',
+                     'deleted_at': '2012-09-15 12:51:11'
+                    }
+            }
+        ]
+        exist_str = json.dumps(exist_dict)
+        exist.raw.json = exist_str
+        self.mox.StubOutWithMock(db, 'get_data_center_and_region_for_exists')
+        db.get_data_center_and_region_for_exists(exist.raw_id).AndReturn(
+            {'region': 'DFW', 'data_center': 'DFW1'})
+        self.mox.StubOutWithMock(kombu.pools, 'producers')
+        self.mox.StubOutWithMock(kombu.common, 'maybe_declare')
+        producer = self.mox.CreateMockAnything()
+        producer.channel = self.mox.CreateMockAnything()
+        kombu.pools.producers[connection].AndReturn(producer)
+        producer.acquire(block=True).AndReturn(producer)
+        producer.__enter__().AndReturn(producer)
+        kombu.common.maybe_declare(exchange, producer.channel)
+        self.mox.StubOutWithMock(uuid, 'uuid4')
+        uuid.uuid4().AndReturn('some_other_uuid')
+        message_id = 'some_other_uuid'
+        original_message_id = 'some_uuid'
+        event_type = 'compute.instance.exists.verified'
+        message = utils.generate_verified_message_in_cuf_format(
+            {'end_time': '2012-09-15 12:51:11'}, message_id,
+            original_message_id, event_type)
+        producer.publish(message, exist_dict[0])
+        producer.__exit__(mox.IgnoreArg(), mox.IgnoreArg(), mox.IgnoreArg())
+        self.mox.ReplayAll()
+
+        dbverifier.send_verified_notification_in_cuf_format(exist, exchange,
+                                                            connection)
+
+        self.mox.VerifyAll()
+
     def test_send_verified_notification_routing_keys(self):
         connection = self.mox.CreateMockAnything()
         exchange = self.mox.CreateMockAnything()
@@ -569,6 +630,94 @@ class VerifierTestCase(unittest.TestCase):
                                               routing_keys=routing_keys)
         self.mox.VerifyAll()
 
+    def test_send_verified_notification_with_routing_keys_in_cuf(self):
+        connection = self.mox.CreateMockAnything()
+        exchange = self.mox.CreateMockAnything()
+        exist = self.mox.CreateMockAnything()
+        exist.raw = self.mox.CreateMockAnything()
+        exist.raw_id = self.mox.CreateMockAnything()
+        exists_launched_within_audit_period = [
+            'monitor.info',
+            {
+                'event_type': 'test',
+                'message_id': 'some_uuid',
+                '_unique_id': 'e53d007a-fc23-11e1-975c-cfa6b29bb814',
+                'payload':
+                    {'tenant_id': '2882',
+                     'access_ip_v4': '5.79.20.138',
+                     'access_ip_v6': '2a00:1a48:7804:0110:a8a0:fa07:ff08:157a',
+                     'audit_period_beginning': '2012-09-15 11:51:11',
+                     'audit_period_ending': '2012-09-16 11:51:11',
+                     'bandwidth': {'private': {'bw_in': 0, 'bw_out': 264902},
+                                   'public': {'bw_in': 1001, 'bw_out': 19992}
+                                  },
+                     'image_meta': {'com.rackspace__1__options': '1'},
+
+                     'instance_id': '56',
+                     'instance_type_id': '10',
+                     'launched_at': '2012-09-15 12:51:11',
+                     'deleted_at': ''}
+            }
+        ]
+        exist_str = json.dumps(exists_launched_within_audit_period)
+        exist.raw.json = exist_str
+        self.mox.StubOutWithMock(kombu.pools, 'producers')
+        self.mox.StubOutWithMock(kombu.common, 'maybe_declare')
+        routing_keys = ['notifications.info', 'monitor.info']
+        self.mox.StubOutWithMock(db, 'get_data_center_and_region_for_exists')
+        self.mox.StubOutWithMock(uuid, 'uuid4')
+        uuid.uuid4().AndReturn('some_other_uuid')
+        db.get_data_center_and_region_for_exists(exist.raw_id).AndReturn(
+            {'region': 'DFW', 'data_center': 'DFW1'})
+        for key in routing_keys:
+            producer = self.mox.CreateMockAnything()
+            producer.channel = self.mox.CreateMockAnything()
+            kombu.pools.producers[connection].AndReturn(producer)
+            producer.acquire(block=True).AndReturn(producer)
+            producer.__enter__().AndReturn(producer)
+            kombu.common.maybe_declare(exchange, producer.channel)
+
+            message_id = 'some_other_uuid'
+            original_message_id = 'some_uuid'
+            event_type = 'compute.instance.exists.verified'
+            message = utils.generate_verified_message_in_cuf_format(
+                {'end_time': '2012-09-16 11:51:11',
+                 'start_time': '2012-09-15 12:51:11'},
+                message_id, original_message_id, event_type)
+            producer.publish(message, key)
+            producer.__exit__(mox.IgnoreArg(), mox.IgnoreArg(),
+                              mox.IgnoreArg())
+
+        self.mox.ReplayAll()
+        dbverifier.send_verified_notification_in_cuf_format(
+            exist, exchange, connection, routing_keys=routing_keys)
+        self.mox.VerifyAll()
+
+    def test_send_verified_notification_in_cuf_format_should_catch_exceptions_and_continue(
+            self):
+        connection = self.mox.CreateMockAnything()
+        exchange = self.mox.CreateMockAnything()
+        exist = self.mox.CreateMockAnything()
+        exist.raw = self.mox.CreateMockAnything()
+        exists_launched_within_audit_period = [
+            'monitor.info',
+            {
+                'event_type': 'test',
+                'message_id': 'some_uuid',
+                '_unique_id': 'e53d007a-fc23-11e1-975c-cfa6b29bb814',
+                'payload': {}
+
+            }
+        ]
+        exist_str = json.dumps(exists_launched_within_audit_period)
+        exist.raw.json = exist_str
+        routing_keys = ['notifications.info', 'monitor.info']
+        self.mox.ReplayAll()
+        dbverifier.send_verified_notification_in_cuf_format(
+            exist, exchange, connection, routing_keys=routing_keys)
+
+        self.mox.VerifyAll()
+
     def test_run_notifications(self):
         config = {
             "tick_time": 30,
@@ -591,8 +740,8 @@ class VerifierTestCase(unittest.TestCase):
         multiprocessing.Pool(2).AndReturn(pool)
         self.mox.StubOutWithMock(dbverifier, '_create_exchange')
         exchange = self.mox.CreateMockAnything()
-        dbverifier._create_exchange('stacktach', 'topic', durable=False)\
-                  .AndReturn(exchange)
+        dbverifier._create_exchange('stacktach', 'topic', durable=False) \
+            .AndReturn(exchange)
         self.mox.StubOutWithMock(dbverifier, '_create_connection')
         conn = self.mox.CreateMockAnything()
         dbverifier._create_connection(config).AndReturn(conn)

@@ -168,12 +168,15 @@ class NovaConsumerTestCase(unittest.TestCase):
             'rabbit_port': 5672,
             'rabbit_userid': 'rabbit',
             'rabbit_password': 'rabbit',
-            'rabbit_virtual_host': '/'
+            'rabbit_virtual_host': '/',
+            "region": "DFW",
+            "data_center": "DFW1"
         }
         self.mox.StubOutWithMock(db, 'get_or_create_deployment')
         deployment = self.mox.CreateMockAnything()
-        db.get_or_create_deployment(config['name'])\
-          .AndReturn((deployment, True))
+        db.get_or_create_deployment(
+            config['name'],config['region'], config['data_center'])\
+            .AndReturn((deployment, True))
         self.mox.StubOutWithMock(kombu.connection, 'BrokerConnection')
         params = dict(hostname=config['rabbit_host'],
                       port=config['rabbit_port'],
@@ -205,12 +208,15 @@ class NovaConsumerTestCase(unittest.TestCase):
             'rabbit_userid': 'rabbit',
             'rabbit_password': 'rabbit',
             'rabbit_virtual_host': '/',
-            'queue_arguments': {'x-ha-policy': 'all'}
+            'queue_arguments': {'x-ha-policy': 'all'},
+            "region": "DFW",
+            "data_center": "DFW1"
         }
         self.mox.StubOutWithMock(db, 'get_or_create_deployment')
         deployment = self.mox.CreateMockAnything()
-        db.get_or_create_deployment(config['name'])\
-          .AndReturn((deployment, True))
+        db.get_or_create_deployment(
+            config['name'], config['region'], config['data_center'])\
+            .AndReturn((deployment, True))
         self.mox.StubOutWithMock(kombu.connection, 'BrokerConnection')
         params = dict(hostname=config['rabbit_host'],
                       port=config['rabbit_port'],
