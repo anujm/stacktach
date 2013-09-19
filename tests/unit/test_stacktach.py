@@ -37,7 +37,7 @@ from utils import INSTANCE_TYPE_ID_1
 from utils import DUMMY_TIME
 from utils import INSTANCE_TYPE_ID_2
 from utils import IMAGE_UUID_1
-from stacktach import stacklog
+from stacktach import stacklog, UnprocessableNotification
 from stacktach import notification
 from stacktach import views
 from tests.unit import StacktachBaseTestCase
@@ -68,11 +68,13 @@ class StacktachRawParsingTestCase(StacktachBaseTestCase):
         mock_record = self.mox.CreateMockAnything()
         mock_notification = self.mox.CreateMockAnything()
         mock_notification.save().AndReturn(mock_record)
-        self.mox.StubOutWithMock(notification, 'notification_factory')
         exchange = 'nova'
-        notification.notification_factory(dict, deployment, routing_key,
-                                          json_args, exchange).AndReturn(
-            mock_notification)
+        self.mox.StubOutWithMock(notification, 'notification_factory')
+        notification.notification_factory(
+            dict, deployment, routing_key, json_args,
+            exchange).AndReturn(mock_notification)
+        self.mox.StubOutWithMock(mock_notification, 'should_process')
+        mock_notification.should_process().AndReturn(True)
         self.mox.ReplayAll()
 
         self.assertEquals(
@@ -94,11 +96,43 @@ class StacktachRawParsingTestCase(StacktachBaseTestCase):
         mock_notification.save()
         self.mox.StubOutWithMock(notification, 'notification_factory')
         exchange = 'nova'
-        notification.notification_factory(dict, deployment, routing_key,
-                                          json_args, exchange).AndReturn(mock_notification)
+        notification.notification_factory(
+            dict, deployment, routing_key, json_args,
+            exchange).AndReturn(mock_notification)
+        self.mox.StubOutWithMock(mock_notification, 'should_process')
+        mock_notification.should_process().AndReturn(True)
         self.mox.ReplayAll()
 
         views.process_raw_data(deployment, args, json_args, exchange)
+        self.mox.VerifyAll()
+
+    def test_process_raw_data_raise_exception_if_notification_unprocessable(self):
+        deployment = self.mox.CreateMockAnything()
+        when = '2013-1-25T13:38:23.123'
+        dict = {
+            '_context_timestamp': when,
+        }
+        routing_key = 'monitor.info'
+        args = ('monitor.info', dict)
+        json_args = json.dumps(args[1])
+
+        mock_notification = self.mox.CreateMockAnything()
+        mock_notification.message_id = "123"
+        exchange = 'nova'
+        self.mox.StubOutWithMock(notification, 'notification_factory')
+        notification.notification_factory(
+            dict, deployment, routing_key, json_args,
+            exchange).AndReturn(mock_notification)
+        self.mox.StubOutWithMock(mock_notification, 'should_process')
+        mock_notification.should_process().AndReturn(False)
+        self.mox.ReplayAll()
+
+        with self.assertRaises(UnprocessableNotification) as ue:
+            views.process_raw_data(deployment, args, json_args, exchange)
+        exception = ue.exception
+        self.assertEqual(exception.reason,
+            "GlanceNotification(message_id: 123) for base image should not be "
+            "processed")
         self.mox.VerifyAll()
 
 

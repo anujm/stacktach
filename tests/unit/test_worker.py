@@ -23,7 +23,7 @@ import json
 import kombu
 import mox
 
-from stacktach import db
+from stacktach import db, UnprocessableNotification
 from stacktach import views
 import worker.worker as worker
 from tests.unit import StacktachBaseTestCase
@@ -155,6 +155,33 @@ class ConsumerTestCase(StacktachBaseTestCase):
         self.assertEqual(consumer.processed, 1)
         self.mox.VerifyAll()
         worker.POST_PROCESS_METHODS["RawData"] = old_handler
+
+    def test_process_should_not_post_process_if_notification_unprocessable(self):
+        deployment = self.mox.CreateMockAnything()
+        message = self.mox.CreateMockAnything()
+        exchange = 'nova'
+        consumer = worker.Consumer('test', None, deployment, True, {},
+                                   exchange, self._test_topics())
+        routing_key = 'monitor.info'
+        message.delivery_info = {'routing_key': routing_key}
+        body_dict = {u'key': u'value'}
+        message.body = json.dumps(body_dict)
+        self.mox.StubOutWithMock(views, 'process_raw_data',
+                                 use_mock_anything=True)
+        args = (routing_key, body_dict)
+        views.process_raw_data(
+            deployment, args, json.dumps(args),exchange) \
+            .AndRaise(UnprocessableNotification("exception"))
+        message.ack()
+
+        self.mox.StubOutWithMock(consumer, '_check_memory',
+                                 use_mock_anything=True)
+        consumer._check_memory()
+        self.mox.ReplayAll()
+        consumer._process(message)
+        self.assertEqual(consumer.processed, 1)
+        self.mox.VerifyAll()
+
 
     def test_run(self):
         config = {

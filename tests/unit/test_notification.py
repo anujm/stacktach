@@ -425,6 +425,18 @@ class NotificationTestCase(StacktachBaseTestCase):
         self.assertEquals(notification.save(), raw)
         self.mox.VerifyAll()
 
+    def test_should_save_returns_true(self):
+        body = {
+            "event_type": "image.upload",
+            "publisher_id": "glance-api01-r2961.global.preprod-ord.ohthree.com",
+        }
+        deployment = "1"
+        routing_key = "generic_monitor.info"
+        json_body = json.dumps([routing_key, body])
+
+        notification = Notification(body, deployment, routing_key, json_body)
+        self.assertTrue(notification.should_process())
+
 
 class GlanceExistsNotificationTestCase(StacktachBaseTestCase):
     def setUp(self):
@@ -695,3 +707,42 @@ class GlanceExistsNotificationTestCase(StacktachBaseTestCase):
                                           json_body)
         notification.save_exists(raw)
         self.mox.VerifyAll()
+
+    def test_should_process_returns_false_for_base_image_notification(self):
+        raw = self.mox.CreateMockAnything()
+        raw.id = 1
+        audit_period_beginning = "2013-05-20 17:31:57.939614"
+        audit_period_ending = "2013-06-20 17:31:57.939614"
+        size = 123
+        uuid = "2df2ccf6-bc1b-4853-aab0-25fda346b3bb"
+        body = {
+            "event_type": "image.exists",
+            "timestamp": "2013-06-20 18:31:57.939614",
+            "publisher_id": "glance-api01-r2961.global.preprod-ord.ohthree.com",
+            "payload": {
+                "audit_period_beginning": audit_period_beginning,
+                "audit_period_ending": audit_period_ending,
+                "owner": TENANT_ID_1,
+                "images":
+                [
+                    {
+                        "created_at": None,
+                        "id": uuid,
+                        "size": size,
+                        "status": "saving",
+                        "properties": {
+                            "instance_uuid": INSTANCE_ID_1,
+                            "image_type": "base"},
+                        "deleted_at": None,
+                    }
+                ]
+            }
+        }
+        deployment = "1"
+        routing_key = "glance_monitor.info"
+        json_body = json.dumps([routing_key, body])
+
+        notification = GlanceNotification(body, deployment, routing_key,
+                                          json_body)
+
+        self.assertFalse(notification.should_process())

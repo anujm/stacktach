@@ -90,6 +90,9 @@ class Notification(object):
                                          request_id=self.request_id,
                                          message_id=self.message_id)
 
+    def should_process(self):
+        return True
+
 
 class GlanceNotification(Notification):
     def __init__(self, body, deployment, routing_key, json):
@@ -211,6 +214,9 @@ class GlanceNotification(Notification):
             'deleted_at': self.deleted_at
         }
         db.create_image_delete(**values)
+
+    def should_process(self):
+        return self.image_type != 0
 
 
 class NovaNotification(Notification):

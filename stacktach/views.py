@@ -7,7 +7,7 @@ import pprint
 from django import db
 from django.shortcuts import render_to_response
 
-from stacktach import datetime_to_decimal as dt
+from stacktach import datetime_to_decimal as dt, UnprocessableNotification
 from stacktach import db as stackdb
 from stacktach import models
 from stacktach import stacklog
@@ -345,6 +345,10 @@ def process_raw_data(deployment, args, json_args, exchange):
     routing_key, body = args
     notif = notification.notification_factory(body, deployment, routing_key,
                                               json_args, exchange)
+    if not notif.should_process():
+        raise UnprocessableNotification(
+            "GlanceNotification(message_id: %s) for base image should not be"
+            " processed" % notif.message_id)
     raw = notif.save()
     return raw, notif
 

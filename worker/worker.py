@@ -34,9 +34,8 @@ except ImportError:
 
 from pympler.process import ProcessMemoryInfo
 
-from stacktach import db, message_service
+from stacktach import db, message_service, views, UnprocessableNotification
 from stacktach import stacklog
-from stacktach import views
 
 stacklog.set_default_logger_name('worker')
 LOG = stacklog.get_logger()
@@ -85,12 +84,17 @@ class Consumer(kombu.mixins.ConsumerMixin):
         args = (routing_key, json.loads(body))
         asJson = json.dumps(args)
         # save raw and ack the message
-        raw, notif = views.process_raw_data(
-            self.deployment, args, asJson, self.exchange)
+        try:
+            raw, notif = views.process_raw_data(
+                self.deployment, args, asJson, self.exchange)
 
-        self.processed += 1
-        message.ack()
-        POST_PROCESS_METHODS[raw.get_name()](raw, notif)
+            self.processed += 1
+            message.ack()
+            POST_PROCESS_METHODS[raw.get_name()](raw, notif)
+        except UnprocessableNotification, e:
+            LOG.debug("Cannot process notification: %s", e.reason)
+            self.processed += 1
+            message.ack()
 
         self._check_memory()
 
