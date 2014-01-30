@@ -32,7 +32,7 @@ from stacktach import datetime_to_decimal as dt
 from stacktach import stacklog
 from stacktach import models
 from tests.unit import StacktachBaseTestCase
-from utils import make_verifier_config
+from utils import make_verifier_config, LAUNCHED_AT_1, INSTANCE_FLAVOR_ID_1, INSTANCE_FLAVOR_ID_2, FLAVOR_FIELD_NAME, DELETED_AT_1, LAUNCHED_AT_2, DELETED_AT_2
 from utils import INSTANCE_ID_1
 from utils import RAX_OPTIONS_1
 from utils import RAX_OPTIONS_2
@@ -60,6 +60,7 @@ class NovaVerifierVerifyForLaunchTestCase(StacktachBaseTestCase):
         self.mox.StubOutWithMock(models, 'InstanceUsage',
                                  use_mock_anything=True)
         models.InstanceUsage.objects = self.mox.CreateMockAnything()
+
         self._setup_verifier()
 
     def _setup_verifier(self):
@@ -133,27 +134,28 @@ class NovaVerifierVerifyForLaunchTestCase(StacktachBaseTestCase):
 
     def test_verify_for_launch_flavor_id_missmatch(self):
         self.mox.StubOutWithMock(config, 'flavor_field_name')
-        config.flavor_field_name().AndReturn('dummy_flavor_field_name')
+        config.flavor_field_name().AndReturn(FLAVOR_FIELD_NAME)
         exist = self.mox.CreateMockAnything()
+        exist.instance = INSTANCE_ID_1
         exist.usage = self.mox.CreateMockAnything()
-        exist.launched_at = decimal.Decimal('1.1')
-        exist.dummy_flavor_field_name = 'dummy_flavor_1'
-        exist.usage.launched_at = decimal.Decimal('1.1')
-        exist.usage.dummy_flavor_field_name = 'dummy_flavor_2'
+        exist.launched_at = decimal.Decimal(LAUNCHED_AT_1)
+        exist.flavor_field_name = INSTANCE_FLAVOR_ID_1
+        exist.usage.launched_at = decimal.Decimal(LAUNCHED_AT_1)
+        exist.usage.flavor_field_name = INSTANCE_FLAVOR_ID_2
         self.mox.ReplayAll()
-
         with self.assertRaises(FieldMismatch) as fm:
             nova_verifier._verify_for_launch(exist)
         exception = fm.exception
-        self.assertEqual(exception.field_name, 'dummy_flavor_field_name')
-        self.assertEqual(exception.expected, 'dummy_flavor_1')
-        self.assertEqual(exception.actual, 'dummy_flavor_2')
+        self.assertEqual(exception.uuid, INSTANCE_ID_1)
+        self.assertEqual(exception.field_name, FLAVOR_FIELD_NAME)
+        self.assertEqual(exception.expected, INSTANCE_FLAVOR_ID_1)
+        self.assertEqual(exception.actual, INSTANCE_FLAVOR_ID_2)
 
         self.mox.VerifyAll()
 
     def test_verify_for_launch_tenant_id_mismatch(self):
         self.mox.StubOutWithMock(config, 'flavor_field_name')
-        config.flavor_field_name().AndReturn("flavor_field_name")
+        config.flavor_field_name().AndReturn(FLAVOR_FIELD_NAME)
 
         exist = self.mox.CreateMockAnything()
         exist.tenant = TENANT_ID_1
@@ -425,35 +427,35 @@ class NovaVerifierVerifyForDeleteTestCase(StacktachBaseTestCase):
     def test_verify_for_delete_launched_at_mismatch(self):
         exist = self.mox.CreateMockAnything()
         exist.delete = self.mox.CreateMockAnything()
-        exist.launched_at = decimal.Decimal('1.1')
-        exist.deleted_at = decimal.Decimal('5.1')
-        exist.delete.launched_at = decimal.Decimal('2.1')
-        exist.delete.deleted_at = decimal.Decimal('5.1')
+        exist.launched_at = LAUNCHED_AT_1
+        exist.deleted_at = DELETED_AT_1
+        exist.delete.launched_at = LAUNCHED_AT_2
+        exist.delete.deleted_at = DELETED_AT_1
         self.mox.ReplayAll()
 
         with self.assertRaises(FieldMismatch) as fm:
             nova_verifier._verify_for_delete(exist)
         exception = fm.exception
         self.assertEqual(exception.field_name, 'launched_at')
-        self.assertEqual(exception.expected, decimal.Decimal('1.1'))
-        self.assertEqual(exception.actual, decimal.Decimal('2.1'))
+        self.assertEqual(exception.expected, LAUNCHED_AT_1)
+        self.assertEqual(exception.actual, LAUNCHED_AT_2)
         self.mox.VerifyAll()
 
     def test_verify_for_delete_deleted_at_mismatch(self):
         exist = self.mox.CreateMockAnything()
         exist.delete = self.mox.CreateMockAnything()
-        exist.launched_at = decimal.Decimal('1.1')
-        exist.deleted_at = decimal.Decimal('5.1')
-        exist.delete.launched_at = decimal.Decimal('1.1')
-        exist.delete.deleted_at = decimal.Decimal('6.1')
+        exist.launched_at = LAUNCHED_AT_1
+        exist.deleted_at = DELETED_AT_1
+        exist.delete.launched_at = LAUNCHED_AT_1
+        exist.delete.deleted_at = DELETED_AT_2
         self.mox.ReplayAll()
 
         with self.assertRaises(FieldMismatch) as fm:
             nova_verifier._verify_for_delete(exist)
         exception = fm.exception
         self.assertEqual(exception.field_name, 'deleted_at')
-        self.assertEqual(exception.expected, decimal.Decimal('5.1'))
-        self.assertEqual(exception.actual, decimal.Decimal('6.1'))
+        self.assertEqual(exception.expected, DELETED_AT_1)
+        self.assertEqual(exception.actual, DELETED_AT_2)
         self.mox.VerifyAll()
 
 

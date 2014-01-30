@@ -44,18 +44,21 @@ class AmbiguousResults(VerificationException):
 
 
 class FieldMismatch(VerificationException):
-    def __init__(self, field_name, expected, actual):
+    def __init__(self, uuid, field_name, expected, actual):
+        self.uuid = uuid
         self.field_name = field_name
         self.expected = expected
         self.actual = actual
-        self.reason = "Expected %s to be '%s' got '%s'" % (self.field_name,
-                                                           self.expected,
-                                                           self.actual)
+        self.reason = \
+            "{uuid}: Expected {field_name} to be '{expected}' got '{actual}'".\
+            format(uuid=self.uuid, field_name=self.field_name,
+                   expected=self.expected, actual=self.actual)
 
 class NullFieldException(VerificationException):
     def __init__(self, field_name, exist_id):
         self.field_name = field_name
-        self.reason = "%s field was null for exist id %s" %(field_name, exist_id)
+        self.reason = \
+            "%s field was null for exist id %s" %(field_name, exist_id)
 
 class WrongTypeException(VerificationException):
     def __init__(self, field_name, value, exist_id):

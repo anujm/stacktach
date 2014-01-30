@@ -53,33 +53,35 @@ def _verify_field_mismatch(exists, launch):
     flavor_field_name = config.flavor_field_name()
     if not base_verifier._verify_date_field(
             launch.launched_at, exists.launched_at, same_second=True):
-        raise FieldMismatch('launched_at', exists.launched_at,
+        raise FieldMismatch(exists.instance, 'launched_at', exists.launched_at,
                             launch.launched_at)
 
     if getattr(launch, flavor_field_name) != \
             getattr(exists, flavor_field_name):
-        raise FieldMismatch(flavor_field_name,
+        raise FieldMismatch(exists.instance,
+                            flavor_field_name,
                             getattr(exists, flavor_field_name),
                             getattr(launch, flavor_field_name))
 
     if launch.tenant != exists.tenant:
-        raise FieldMismatch('tenant', exists.tenant,
+        raise FieldMismatch(exists.instance, 'tenant', exists.tenant,
                             launch.tenant)
 
     if launch.rax_options != exists.rax_options:
-        raise FieldMismatch('rax_options', exists.rax_options,
+        raise FieldMismatch(exists.instance, 'rax_options', exists.rax_options,
                             launch.rax_options)
 
     if launch.os_architecture != exists.os_architecture:
-        raise FieldMismatch('os_architecture', exists.os_architecture,
+        raise FieldMismatch(exists.instance, 'os_architecture',
+                            exists.os_architecture,
                             launch.os_architecture)
 
     if launch.os_version != exists.os_version:
-        raise FieldMismatch('os_version', exists.os_version,
+        raise FieldMismatch(exists.instance, 'os_version', exists.os_version,
                             launch.os_version)
 
     if launch.os_distro != exists.os_distro:
-        raise FieldMismatch('os_distro', exists.os_distro,
+        raise FieldMismatch(exists.instance, 'os_distro', exists.os_distro,
                             launch.os_distro)
 
 
@@ -146,13 +148,13 @@ def _verify_for_delete(exist, delete=None,
     if delete:
         if not base_verifier._verify_date_field(
                 delete.launched_at, exist.launched_at, same_second=True):
-            raise FieldMismatch('launched_at', exist.launched_at,
-                                delete.launched_at)
+            raise FieldMismatch(exist.instance, 'launched_at',
+                                exist.launched_at, delete.launched_at)
 
         if not base_verifier._verify_date_field(
                 delete.deleted_at, exist.deleted_at, same_second=True):
-            raise FieldMismatch(
-                'deleted_at', exist.deleted_at, delete.deleted_at)
+            raise FieldMismatch(exist.instance, 'deleted_at', exist.deleted_at,
+                                delete.deleted_at)
 
 
 def _verify_basic_validity(exist):

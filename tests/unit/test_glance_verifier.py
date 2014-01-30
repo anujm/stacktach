@@ -31,7 +31,7 @@ from stacktach import datetime_to_decimal as dt
 from stacktach import stacklog
 from stacktach import models
 from tests.unit import StacktachBaseTestCase
-from utils import IMAGE_UUID_1
+from utils import IMAGE_UUID_1, SIZE_1, SIZE_2, CREATED_AT_1, CREATED_AT_2
 from utils import GLANCE_VERIFIER_EVENT_TYPE
 from utils import make_verifier_config
 from verifier import glance_verifier
@@ -87,8 +87,8 @@ class GlanceVerifierTestCase(StacktachBaseTestCase):
     def test_verify_usage_created_at_mismatch(self):
         exist = self.mox.CreateMockAnything()
         exist.usage = self.mox.CreateMockAnything()
-        exist.created_at = decimal.Decimal('1.1')
-        exist.usage.created_at = decimal.Decimal('2.1')
+        exist.created_at = CREATED_AT_1
+        exist.usage.created_at = CREATED_AT_2
         self.mox.ReplayAll()
 
         with self.assertRaises(FieldMismatch) as cm:
@@ -96,8 +96,8 @@ class GlanceVerifierTestCase(StacktachBaseTestCase):
 
         exception = cm.exception
         self.assertEqual(exception.field_name, 'created_at')
-        self.assertEqual(exception.expected, decimal.Decimal('1.1'))
-        self.assertEqual(exception.actual, decimal.Decimal('2.1'))
+        self.assertEqual(exception.expected, CREATED_AT_1)
+        self.assertEqual(exception.actual, CREATED_AT_2)
 
         self.mox.VerifyAll()
 
@@ -119,10 +119,10 @@ class GlanceVerifierTestCase(StacktachBaseTestCase):
 
     def test_verify_usage_size_mismatch(self):
         exist = self.mox.CreateMockAnything()
-        exist.size = 1234
+        exist.size = SIZE_1
 
         exist.usage = self.mox.CreateMockAnything()
-        exist.usage.size = 5678
+        exist.usage.size = SIZE_2
         self.mox.ReplayAll()
 
         with self.assertRaises(FieldMismatch) as cm:
@@ -130,8 +130,8 @@ class GlanceVerifierTestCase(StacktachBaseTestCase):
         exception = cm.exception
 
         self.assertEqual(exception.field_name, 'size')
-        self.assertEqual(exception.expected, 1234)
-        self.assertEqual(exception.actual, 5678)
+        self.assertEqual(exception.expected, SIZE_1)
+        self.assertEqual(exception.actual, SIZE_2)
 
         self.mox.VerifyAll()
 
@@ -253,24 +253,6 @@ class GlanceVerifierTestCase(StacktachBaseTestCase):
         self.assertEqual(exception.field_name, 'deleted_at')
         self.assertEqual(exception.expected, decimal.Decimal('5.1'))
         self.assertEqual(exception.actual, decimal.Decimal('4.1'))
-        self.mox.VerifyAll()
-
-    def test_verify_for_delete_size_mismatch(self):
-        exist = self.mox.CreateMockAnything()
-        exist.delete = self.mox.CreateMockAnything()
-        exist.launched_at = decimal.Decimal('1.1')
-        exist.deleted_at = decimal.Decimal('5.1')
-        exist.delete.launched_at = decimal.Decimal('1.1')
-        exist.delete.deleted_at = decimal.Decimal('6.1')
-        self.mox.ReplayAll()
-
-        try:
-            glance_verifier._verify_for_delete(exist)
-            self.fail()
-        except FieldMismatch, fm:
-            self.assertEqual(fm.field_name, 'deleted_at')
-            self.assertEqual(fm.expected, decimal.Decimal('5.1'))
-            self.assertEqual(fm.actual, decimal.Decimal('6.1'))
         self.mox.VerifyAll()
 
     def test_should_verify_that_image_size_in_exist_is_not_null(self):
@@ -443,10 +425,11 @@ class GlanceVerifierTestCase(StacktachBaseTestCase):
         self.mox.StubOutWithMock(glance_verifier, '_verify_for_delete')
         self.mox.StubOutWithMock(glance_verifier, '_verify_validity')
 
-        field_mismatch_exc = FieldMismatch('field', 'expected', 'actual')
+        field_mismatch_exc = FieldMismatch('uuid', 'field', 'expected',
+                                           'actual')
         glance_verifier._verify_for_usage(exist1).AndRaise(
             exception=field_mismatch_exc)
-        exist1.mark_failed(reason="Expected field to be 'expected' got 'actual'")
+        exist1.mark_failed(reason="uuid: Expected field to be 'expected' got 'actual'")
 
         glance_verifier._verify_for_usage(exist2)
         glance_verifier._verify_for_delete(exist2)

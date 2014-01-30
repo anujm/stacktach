@@ -51,15 +51,15 @@ def _get_child_logger():
 def _verify_field_mismatch(exists, usage):
     if not base_verifier._verify_date_field(
             usage.created_at, exists.created_at, same_second=True):
-        raise FieldMismatch('created_at', exists.created_at,
+        raise FieldMismatch(exists.uuid, 'created_at', exists.created_at,
                             usage.created_at)
 
     if usage.owner != exists.owner:
-        raise FieldMismatch('owner', exists.owner,
+        raise FieldMismatch(exists.uuid, 'owner', exists.owner,
                             usage.owner)
 
     if usage.size != exists.size:
-        raise FieldMismatch('size', exists.size,
+        raise FieldMismatch(exists.uuid, 'size', exists.size,
                             usage.size)
 
 
@@ -123,7 +123,7 @@ def _verify_for_delete(exist, delete=None):
     if delete:
         if not base_verifier._verify_date_field(
                 delete.deleted_at, exist.deleted_at, same_second=True):
-            raise FieldMismatch('deleted_at', exist.deleted_at,
+            raise FieldMismatch(exist.uuid, 'deleted_at', exist.deleted_at,
                                 delete.deleted_at)
 
 
