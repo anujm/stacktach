@@ -330,9 +330,7 @@ class StacktachUsageParsingTestCase(StacktachBaseTestCase):
     def test_process_usage_for_new_launch_create_start(self):
         notification = self._create_mock_notification()
         notification.instance_flavor_id = INSTANCE_FLAVOR_ID_1
-
-        raw = self.mox.CreateMockAnything()
-        raw.event = 'compute.instance.create.start'
+        notification.event = 'compute.instance.create.start'
 
         usage = self.mox.CreateMockAnything()
         views.STACKDB.get_or_create_instance_usage(instance=INSTANCE_ID_1,
@@ -341,7 +339,7 @@ class StacktachUsageParsingTestCase(StacktachBaseTestCase):
         views.STACKDB.save(usage)
         self.mox.ReplayAll()
 
-        views._process_usage_for_new_launch(raw, notification)
+        views._process_usage_for_new_launch(notification)
 
         self.assertEquals(usage.instance_type_id, INSTANCE_TYPE_ID_1)
         self.assertEquals(usage.tenant, TENANT_ID_1)
@@ -355,9 +353,7 @@ class StacktachUsageParsingTestCase(StacktachBaseTestCase):
 
     def test_process_usage_for_new_launch_rescue_start(self):
         notification = self._create_mock_notification()
-
-        raw = self.mox.CreateMockAnything()
-        raw.event = 'compute.instance.rescue.start'
+        notification.event = 'compute.instance.rescue.start'
 
         usage = self.mox.CreateMockAnything()
         views.STACKDB.get_or_create_instance_usage(instance=INSTANCE_ID_1,
@@ -366,7 +362,7 @@ class StacktachUsageParsingTestCase(StacktachBaseTestCase):
         views.STACKDB.save(usage)
         self.mox.ReplayAll()
 
-        views._process_usage_for_new_launch(raw, notification)
+        views._process_usage_for_new_launch(notification)
 
         self.assertEquals(usage.instance_type_id, INSTANCE_TYPE_ID_1)
         self.assertEquals(usage.tenant, TENANT_ID_1)
@@ -380,8 +376,7 @@ class StacktachUsageParsingTestCase(StacktachBaseTestCase):
     def test_process_usage_for_new_launch_rebuild_start(self):
         notification = self._create_mock_notification()
         notification.instance_flavor_id = INSTANCE_FLAVOR_ID_1
-        raw = self.mox.CreateMockAnything()
-        raw.event = 'compute.instance.rebuild.start'
+        notification.event = 'compute.instance.rebuild.start'
         usage = self.mox.CreateMockAnything()
         views.STACKDB.get_or_create_instance_usage(instance=INSTANCE_ID_1,
                                                    request_id=REQUEST_ID_1) \
@@ -389,7 +384,7 @@ class StacktachUsageParsingTestCase(StacktachBaseTestCase):
         views.STACKDB.save(usage)
         self.mox.ReplayAll()
 
-        views._process_usage_for_new_launch(raw, notification)
+        views._process_usage_for_new_launch(notification)
 
         self.assertEquals(usage.instance_type_id, INSTANCE_TYPE_ID_1)
         self.assertEquals(usage.tenant, TENANT_ID_1)
@@ -403,8 +398,7 @@ class StacktachUsageParsingTestCase(StacktachBaseTestCase):
     def test_process_usage_for_new_launch_rebuild_start_when_no_launched_at_in_db(self):
         notification = self._create_mock_notification()
         notification.instance_flavor_id = INSTANCE_FLAVOR_ID_1
-        raw = self.mox.CreateMockAnything()
-        raw.event = 'compute.instance.rebuild.start'
+        notification.event = 'compute.instance.rebuild.start'
 
         usage = self.mox.CreateMockAnything()
         usage.launched_at = None
@@ -414,7 +408,7 @@ class StacktachUsageParsingTestCase(StacktachBaseTestCase):
         views.STACKDB.save(usage)
         self.mox.ReplayAll()
 
-        views._process_usage_for_new_launch(raw, notification)
+        views._process_usage_for_new_launch(notification)
 
         self.assertEqual(usage.launched_at, utils.decimal_utc(DUMMY_TIME))
         self.assertEquals(usage.tenant, TENANT_ID_1)
@@ -428,8 +422,7 @@ class StacktachUsageParsingTestCase(StacktachBaseTestCase):
 
     def test_process_usage_for_new_launch_resize_prep_start_when_no_launched_at_in_db(self):
         notification = self._create_mock_notification()
-        raw = self.mox.CreateMockAnything()
-        raw.event = 'compute.instance.resize.prep.start'
+        notification.event = 'compute.instance.resize.prep.start'
 
         usage = self.mox.CreateMockAnything()
         usage.launched_at = None
@@ -441,7 +434,7 @@ class StacktachUsageParsingTestCase(StacktachBaseTestCase):
 
         usage.launched_at = None
 
-        views._process_usage_for_new_launch(raw, notification)
+        views._process_usage_for_new_launch(notification)
 
         self.assertEqual(usage.launched_at, utils.decimal_utc(DUMMY_TIME))
         self.assertEquals(usage.tenant, TENANT_ID_1)
@@ -454,8 +447,7 @@ class StacktachUsageParsingTestCase(StacktachBaseTestCase):
 
     def test_process_usage_for_new_launch_resize_revert_start_when_no_launched_at_in_db(self):
         notification = self._create_mock_notification()
-        raw = self.mox.CreateMockAnything()
-        raw.event = 'compute.instance.resize.revert.start'
+        notification.event = 'compute.instance.resize.revert.start'
 
         usage = self.mox.CreateMockAnything()
         usage.launched_at = None
@@ -465,7 +457,7 @@ class StacktachUsageParsingTestCase(StacktachBaseTestCase):
         views.STACKDB.save(usage)
         self.mox.ReplayAll()
 
-        views._process_usage_for_new_launch(raw, notification)
+        views._process_usage_for_new_launch(notification)
 
         self.assertEquals(usage.tenant, TENANT_ID_1)
         self.assertEqual(usage.launched_at, utils.decimal_utc(DUMMY_TIME))
@@ -478,8 +470,7 @@ class StacktachUsageParsingTestCase(StacktachBaseTestCase):
 
     def test_process_usage_for_new_launch_resize_prep_start_when_launched_at_in_db(self):
         notification = self._create_mock_notification()
-        raw = self.mox.CreateMockAnything()
-        raw.event = 'compute.instance.resize.prep.start'
+        notification.event = 'compute.instance.resize.prep.start'
 
         orig_launched_at = utils.decimal_utc(DUMMY_TIME - datetime.timedelta(days=1))
         usage = self.mox.CreateMockAnything()
@@ -490,7 +481,7 @@ class StacktachUsageParsingTestCase(StacktachBaseTestCase):
         views.STACKDB.save(usage)
         self.mox.ReplayAll()
 
-        views._process_usage_for_new_launch(raw, notification)
+        views._process_usage_for_new_launch(notification)
 
         self.assertEqual(usage.launched_at, orig_launched_at)
         self.assertEqual(usage.tenant, TENANT_ID_1)
@@ -503,8 +494,7 @@ class StacktachUsageParsingTestCase(StacktachBaseTestCase):
 
     def test_process_usage_for_new_launch_rescue_start_when_launched_at_in_db(self):
         notification = self._create_mock_notification()
-        raw = self.mox.CreateMockAnything()
-        raw.event = 'compute.instance.rescue.start'
+        notification.event = 'compute.instance.rescue.start'
 
         orig_launched_at = utils.decimal_utc(DUMMY_TIME - datetime.timedelta(days=1))
         usage = self.mox.CreateMockAnything()
@@ -515,7 +505,7 @@ class StacktachUsageParsingTestCase(StacktachBaseTestCase):
         views.STACKDB.save(usage)
         self.mox.ReplayAll()
 
-        views._process_usage_for_new_launch(raw, notification)
+        views._process_usage_for_new_launch(notification)
 
         self.assertEqual(usage.launched_at, orig_launched_at)
         self.assertEqual(usage.tenant, TENANT_ID_1)
@@ -529,8 +519,7 @@ class StacktachUsageParsingTestCase(StacktachBaseTestCase):
     def test_process_usage_for_updates_create_end(self):
         notification = self._create_mock_notification()
         notification.message = 'Success'
-        raw = self.mox.CreateMockAnything()
-        raw.event = 'compute.instance.create.end'
+        notification.event = 'compute.instance.create.end'
 
         usage = self.mox.CreateMockAnything()
         usage.launched_at = None
@@ -540,7 +529,7 @@ class StacktachUsageParsingTestCase(StacktachBaseTestCase):
         views.STACKDB.save(usage)
         self.mox.ReplayAll()
 
-        views._process_usage_for_updates(raw, notification)
+        views._process_usage_for_updates(notification)
 
         self.assertEqual(usage.launched_at, utils.decimal_utc(DUMMY_TIME))
         self.assertEqual(usage.tenant, TENANT_ID_1)
@@ -553,8 +542,7 @@ class StacktachUsageParsingTestCase(StacktachBaseTestCase):
 
     def test_process_usage_for_updates_rescue_end(self):
         notification = self._create_mock_notification()
-        raw = self.mox.CreateMockAnything()
-        raw.event = 'compute.instance.rescue.end'
+        notification.event = 'compute.instance.rescue.end'
 
         usage = self.mox.CreateMockAnything()
         usage.launched_at = None
@@ -564,7 +552,7 @@ class StacktachUsageParsingTestCase(StacktachBaseTestCase):
         views.STACKDB.save(usage)
         self.mox.ReplayAll()
 
-        views._process_usage_for_updates(raw, notification)
+        views._process_usage_for_updates(notification)
 
         self.assertEqual(usage.launched_at, utils.decimal_utc(DUMMY_TIME))
         self.assertEqual(usage.tenant, TENANT_ID_1)
@@ -578,8 +566,7 @@ class StacktachUsageParsingTestCase(StacktachBaseTestCase):
     def test_process_usage_for_updates_create_end_success_message(self):
         notification = self._create_mock_notification()
         notification.message = 'Success'
-        raw = self.mox.CreateMockAnything()
-        raw.event = 'compute.instance.create.end'
+        notification.event = 'compute.instance.create.end'
 
         usage = self.mox.CreateMockAnything()
         usage.launched_at = None
@@ -589,7 +576,7 @@ class StacktachUsageParsingTestCase(StacktachBaseTestCase):
         views.STACKDB.save(usage)
         self.mox.ReplayAll()
 
-        views._process_usage_for_updates(raw, notification)
+        views._process_usage_for_updates(notification)
         self.assertEqual(usage.launched_at, utils.decimal_utc(DUMMY_TIME))
         self.assertEqual(usage.tenant, TENANT_ID_1)
         self.assertEquals(usage.os_architecture, OS_ARCH_1)
@@ -602,19 +589,14 @@ class StacktachUsageParsingTestCase(StacktachBaseTestCase):
     def test_process_usage_for_updates_create_end_error_message(self):
         notification = self.mox.CreateMockAnything()
         notification.message = 'Error'
-
-        raw = self.mox.CreateMockAnything()
-        raw.event = 'compute.instance.create.end'
-        self.mox.ReplayAll()
-
-        views._process_usage_for_updates(raw, notification)
+        notification.event = 'compute.instance.create.end'
+        views._process_usage_for_updates(notification)
 
         self.mox.VerifyAll()
 
     def test_process_usage_for_updates_revert_end(self):
         notification = self._create_mock_notification()
-        raw = self.mox.CreateMockAnything()
-        raw.event = 'compute.instance.resize.revert.end'
+        notification.event = 'compute.instance.resize.revert.end'
 
         usage = self.mox.CreateMockAnything()
         usage.launched_at = None
@@ -624,7 +606,7 @@ class StacktachUsageParsingTestCase(StacktachBaseTestCase):
         views.STACKDB.save(usage)
         self.mox.ReplayAll()
 
-        views._process_usage_for_updates(raw, notification)
+        views._process_usage_for_updates(notification)
 
         self.assertEqual(usage.instance_type_id, INSTANCE_TYPE_ID_1)
         self.assertEqual(usage.launched_at, utils.decimal_utc(DUMMY_TIME))
@@ -638,8 +620,7 @@ class StacktachUsageParsingTestCase(StacktachBaseTestCase):
 
     def test_process_usage_for_updates_finish_resize_start(self):
         notification = self._create_mock_notification()
-        raw = self.mox.CreateMockAnything()
-        raw.event = 'compute.instance.finish_resize.start'
+        notification.event = 'compute.instance.finish_resize.start'
 
         usage = self.mox.CreateMockAnything()
         usage.launched_at = None
@@ -651,7 +632,7 @@ class StacktachUsageParsingTestCase(StacktachBaseTestCase):
         views.STACKDB.save(usage)
         self.mox.ReplayAll()
 
-        views._process_usage_for_updates(raw, notification)
+        views._process_usage_for_updates(notification)
 
         self.assertEqual(usage.instance_type_id, INSTANCE_TYPE_ID_1)
         self.assertEqual(usage.instance_flavor_id, INSTANCE_FLAVOR_ID_1)
@@ -665,8 +646,7 @@ class StacktachUsageParsingTestCase(StacktachBaseTestCase):
 
     def test_process_usage_for_updates_finish_resize_end(self):
         notification = self._create_mock_notification()
-        raw = self.mox.CreateMockAnything()
-        raw.event = 'compute.instance.finish_resize.end'
+        notification.event = 'compute.instance.finish_resize.end'
 
         usage = self.mox.CreateMockAnything()
         usage.launched_at = None
@@ -678,7 +658,7 @@ class StacktachUsageParsingTestCase(StacktachBaseTestCase):
         views.STACKDB.save(usage)
         self.mox.ReplayAll()
 
-        views._process_usage_for_updates(raw, notification)
+        views._process_usage_for_updates(notification)
 
         self.assertEqual(usage.instance_type_id, INSTANCE_TYPE_ID_1)
         self.assertEqual(usage.instance_flavor_id, INSTANCE_FLAVOR_ID_1)

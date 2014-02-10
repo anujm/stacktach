@@ -165,20 +165,18 @@ INSTANCE_EVENT = {
 }
 
 
-def _process_usage_for_new_launch(raw, notification):
-    values = {}
-    values['instance'] = notification.instance
-    values['request_id'] = notification.request_id
+def _process_usage_for_new_launch(notification):
+    (usage, new) = STACKDB.get_or_create_instance_usage(
+        instance=notification.instance,
+        request_id=notification.request_id)
 
-    (usage, new) = STACKDB.get_or_create_instance_usage(**values)
-
-    if raw.event in [INSTANCE_EVENT['create_start'],
+    if notification.event in [INSTANCE_EVENT['create_start'],
                      INSTANCE_EVENT['rebuild_start'],
                      INSTANCE_EVENT['rescue_start']]:
         usage.instance_type_id = notification.instance_type_id
         usage.instance_flavor_id = notification.instance_flavor_id
 
-    if raw.event in [INSTANCE_EVENT['rebuild_start'],
+    if notification.event in [INSTANCE_EVENT['rebuild_start'],
                      INSTANCE_EVENT['resize_prep_start'],
                      INSTANCE_EVENT['resize_revert_start'],
                      INSTANCE_EVENT['rescue_start']] and\
@@ -189,7 +187,7 @@ def _process_usage_for_new_launch(raw, notification):
         #     though, because we may have already received the end event
         usage.launched_at = utils.str_time_to_unix(notification.launched_at)
 
-    if raw.event in [INSTANCE_EVENT['resize_prep_start'],
+    if notification.event in [INSTANCE_EVENT['resize_prep_start'],
                      INSTANCE_EVENT['resize_revert_start']] and\
             usage.instance_type_id is None and\
             usage.instance_flavor_id is None:
@@ -209,8 +207,8 @@ def _process_usage_for_new_launch(raw, notification):
     STACKDB.save(usage)
 
 
-def _process_usage_for_updates(raw, notification):
-    if raw.event == INSTANCE_EVENT['create_end']:
+def _process_usage_for_updates(notification):
+    if notification.event == INSTANCE_EVENT['create_end']:
         if notification.message and notification.message != 'Success':
             return
 
@@ -219,14 +217,12 @@ def _process_usage_for_updates(raw, notification):
     (usage, new) = STACKDB.get_or_create_instance_usage(instance=instance_id,
                                                         request_id=request_id)
 
-    if raw.event in [INSTANCE_EVENT['create_end'],
-                     INSTANCE_EVENT['rebuild_end'],
-                     INSTANCE_EVENT['resize_finish_end'],
+    if notification.event in [INSTANCE_EVENT['create_end'],
                      INSTANCE_EVENT['resize_revert_end'],
                      INSTANCE_EVENT['rescue_end']]:
         usage.launched_at = utils.str_time_to_unix(notification.launched_at)
 
-    if raw.event in [INSTANCE_EVENT['resize_revert_end'],
+    if notification.event in [INSTANCE_EVENT['resize_revert_end'],
                      INSTANCE_EVENT['resize_finish_start'],
                      INSTANCE_EVENT['resize_finish_end']]:
         usage.instance_type_id = notification.instance_type_id
@@ -325,10 +321,10 @@ USAGE_PROCESS_MAPPING = {
     INSTANCE_EVENT['resize_prep_start']: _process_usage_for_new_launch,
     INSTANCE_EVENT['resize_revert_start']: _process_usage_for_new_launch,
     INSTANCE_EVENT['rescue_start']: _process_usage_for_new_launch,
+    INSTANCE_EVENT['resize_finish_end']: _process_usage_for_new_launch,
+    INSTANCE_EVENT['rebuild_end']: _process_usage_for_new_launch,
     INSTANCE_EVENT['create_end']: _process_usage_for_updates,
-    INSTANCE_EVENT['rebuild_end']: _process_usage_for_updates,
     INSTANCE_EVENT['resize_finish_start']: _process_usage_for_updates,
-    INSTANCE_EVENT['resize_finish_end']: _process_usage_for_updates,
     INSTANCE_EVENT['resize_revert_end']: _process_usage_for_updates,
     INSTANCE_EVENT['rescue_end']: _process_usage_for_updates,
     INSTANCE_EVENT['delete_end']: _process_delete,
@@ -342,12 +338,12 @@ GLANCE_USAGE_PROCESS_MAPPING = {
 }
 
 
-def aggregate_usage(raw, notification):
-    if not raw.instance:
+def aggregate_usage(notification):
+    if not notification.instance:
         return
 
-    if raw.event in USAGE_PROCESS_MAPPING:
-        USAGE_PROCESS_MAPPING[raw.event](raw, notification)
+    if notification.event in USAGE_PROCESS_MAPPING:
+        USAGE_PROCESS_MAPPING[notification.event](notification)
 
 
 def aggregate_glance_usage(raw, body):
@@ -368,7 +364,7 @@ def process_raw_data(deployment, args, json_args, exchange):
 
 def post_process_rawdata(raw, notification):
     aggregate_lifecycle(raw)
-    aggregate_usage(raw, notification)
+    aggregate_usage(notification)
 
 
 def post_process_glancerawdata(raw, notification):
