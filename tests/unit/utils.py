@@ -37,8 +37,11 @@ INSTANCE_FLAVOR_ID_2 = "performance2-120"
 INSTANCE_TYPE_ID_1 = "12345"
 INSTANCE_TYPE_ID_2 = '54321'
 
-DUMMY_TIME = datetime.datetime.utcnow()
-DECIMAL_DUMMY_TIME = dt.dt_to_decimal(DUMMY_TIME)
+UTC_TIME = datetime.datetime.utcnow()
+STR_UTC_TIME = datetime.datetime.strftime(
+    UTC_TIME, '%Y-%m-%d %H:%M:%S.%f')
+DECIMAL_UTC_TIME = dt.dt_to_decimal(UTC_TIME)
+OLD_DECIMAL_UTC_TIME = DECIMAL_UTC_TIME - 100
 
 MESSAGE_ID_1 = "7f28f81b-29a2-43f2-9ba1-ccb3e53ab6c8"
 MESSAGE_ID_2 = "4d596126-0f04-4329-865f-7b9a7bd69bcf"

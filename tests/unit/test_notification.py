@@ -33,8 +33,8 @@ from stacktach import image_type
 from tests.unit import StacktachBaseTestCase
 from tests.unit.utils import BANDWIDTH_PUBLIC_OUTBOUND
 from tests.unit.utils import REQUEST_ID_1
-from tests.unit.utils import DECIMAL_DUMMY_TIME
-from tests.unit.utils import DUMMY_TIME
+from tests.unit.utils import DECIMAL_UTC_TIME
+from tests.unit.utils import UTC_TIME
 from tests.unit.utils import TIMESTAMP_1
 from tests.unit.utils import TENANT_ID_1
 from tests.unit.utils import INSTANCE_ID_1
@@ -361,7 +361,7 @@ class GlanceNotificationTestCase(StacktachBaseTestCase):
             "timestamp": "2013-06-20 18:31:57.939614",
             "publisher_id": "glance-api01-r2961.global.preprod-ord.ohthree.com",
             "payload": {
-                "created_at": str(DUMMY_TIME),
+                "created_at": str(UTC_TIME),
                 "size": size,
                 "owner": TENANT_ID_1,
                 "id": "2df2ccf6-bc1b-4853-aab0-25fda346b3bb",
@@ -373,7 +373,7 @@ class GlanceNotificationTestCase(StacktachBaseTestCase):
 
         self.mox.StubOutWithMock(db, 'create_image_usage')
         db.create_image_usage(
-            created_at=utils.str_time_to_unix(str(DUMMY_TIME)),
+            created_at=utils.str_time_to_unix(str(UTC_TIME)),
             owner=TENANT_ID_1,
             last_raw=raw,
             size=size,
@@ -495,7 +495,7 @@ class GlanceExistsNotificationTestCase(StacktachBaseTestCase):
                         "deleted_at": None,
                     },
                     {
-                        "created_at": str(DUMMY_TIME),
+                        "created_at": str(UTC_TIME),
                         "id": uuid,
                         "size": size,
                         "status": "saving",

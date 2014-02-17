@@ -165,75 +165,35 @@ INSTANCE_EVENT = {
 }
 
 
-def _process_usage_for_new_launch(notification):
-    (usage, new) = STACKDB.get_or_create_instance_usage(
-        instance=notification.instance,
-        request_id=notification.request_id)
-
-    if notification.event in [INSTANCE_EVENT['create_start'],
-                     INSTANCE_EVENT['rebuild_start'],
-                     INSTANCE_EVENT['rescue_start']]:
-        usage.instance_type_id = notification.instance_type_id
-        usage.instance_flavor_id = notification.instance_flavor_id
-
-    if notification.event in [INSTANCE_EVENT['rebuild_start'],
-                     INSTANCE_EVENT['resize_prep_start'],
-                     INSTANCE_EVENT['resize_revert_start'],
-                     INSTANCE_EVENT['rescue_start']] and\
-            usage.launched_at is None:
-        # Grab the launched_at so if this action spans the audit period,
-        #     we will have a launch record corresponding to the exists.
-        #     We don't want to override a launched_at if it is already set
-        #     though, because we may have already received the end event
-        usage.launched_at = utils.str_time_to_unix(notification.launched_at)
-
-    if notification.event in [INSTANCE_EVENT['resize_prep_start'],
-                     INSTANCE_EVENT['resize_revert_start']] and\
-            usage.instance_type_id is None and\
-            usage.instance_flavor_id is None:
-        # Grab the flavor details and populate them if they aren't
-        #     already. This should happen just in case we get an exists
-        #     mid resize/revert. That can happen if the action spans
-        #     multiple audit periods, or if the compute node is restarted
-        #     mid action and another resize is kicked off.
-        usage.instance_type_id = notification.instance_type_id
-        usage.instance_flavor_id = notification.instance_flavor_id
-
-    usage.tenant = notification.tenant
-    usage.rax_options = notification.rax_options
-    usage.os_architecture = notification.os_architecture
-    usage.os_version = notification.os_version
-    usage.os_distro = notification.os_distro
-    STACKDB.save(usage)
+def _is_old_notification(notification, usage):
+    return usage.last_notification_timestamp is not None and \
+        usage.last_notification_timestamp > notification.when
 
 
-def _process_usage_for_updates(notification):
+def _process_usage(notification):
     if notification.event == INSTANCE_EVENT['create_end']:
         if notification.message and notification.message != 'Success':
             return
 
-    instance_id = notification.instance
-    request_id = notification.request_id
-    (usage, new) = STACKDB.get_or_create_instance_usage(instance=instance_id,
-                                                        request_id=request_id)
+    params = {'instance': notification.instance,
+              'request_id': notification.request_id}
 
-    if notification.event in [INSTANCE_EVENT['create_end'],
-                     INSTANCE_EVENT['resize_revert_end'],
-                     INSTANCE_EVENT['rescue_end']]:
-        usage.launched_at = utils.str_time_to_unix(notification.launched_at)
+    if notification.event not in [INSTANCE_EVENT['create_start']]:
+        params['launched_at'] = utils.str_time_to_unix(notification.launched_at)
 
-    if notification.event in [INSTANCE_EVENT['resize_revert_end'],
-                     INSTANCE_EVENT['resize_finish_start'],
-                     INSTANCE_EVENT['resize_finish_end']]:
-        usage.instance_type_id = notification.instance_type_id
-        usage.instance_flavor_id = notification.instance_flavor_id
+    (usage, new) = STACKDB.get_or_create_instance_usage(**params)
 
+    if _is_old_notification(notification, usage):
+        return
+
+    usage.last_notification_timestamp = notification.when
+    usage.instance_type_id = notification.instance_type_id
+    usage.instance_flavor_id = notification.instance_flavor_id
     usage.tenant = notification.tenant
     usage.rax_options = notification.rax_options
     usage.os_architecture = notification.os_architecture
     usage.os_version = notification.os_version
     usage.os_distro = notification.os_distro
-
     STACKDB.save(usage)
 
 
@@ -316,17 +276,17 @@ def _process_glance_exists(raw, notification):
     notification.save_exists(raw)
 
 USAGE_PROCESS_MAPPING = {
-    INSTANCE_EVENT['create_start']: _process_usage_for_new_launch,
-    INSTANCE_EVENT['rebuild_start']: _process_usage_for_new_launch,
-    INSTANCE_EVENT['resize_prep_start']: _process_usage_for_new_launch,
-    INSTANCE_EVENT['resize_revert_start']: _process_usage_for_new_launch,
-    INSTANCE_EVENT['rescue_start']: _process_usage_for_new_launch,
-    INSTANCE_EVENT['resize_finish_end']: _process_usage_for_new_launch,
-    INSTANCE_EVENT['rebuild_end']: _process_usage_for_new_launch,
-    INSTANCE_EVENT['create_end']: _process_usage_for_updates,
-    INSTANCE_EVENT['resize_finish_start']: _process_usage_for_updates,
-    INSTANCE_EVENT['resize_revert_end']: _process_usage_for_updates,
-    INSTANCE_EVENT['rescue_end']: _process_usage_for_updates,
+    INSTANCE_EVENT['create_start']: _process_usage,
+    INSTANCE_EVENT['rebuild_start']: _process_usage,
+    INSTANCE_EVENT['resize_prep_start']: _process_usage,
+    INSTANCE_EVENT['resize_revert_start']: _process_usage,
+    INSTANCE_EVENT['rescue_start']: _process_usage,
+    INSTANCE_EVENT['resize_finish_end']: _process_usage,
+    INSTANCE_EVENT['rebuild_end']: _process_usage,
+    INSTANCE_EVENT['create_end']: _process_usage,
+    INSTANCE_EVENT['resize_finish_start']: _process_usage,
+    INSTANCE_EVENT['resize_revert_end']: _process_usage,
+    INSTANCE_EVENT['rescue_end']: _process_usage,
     INSTANCE_EVENT['delete_end']: _process_delete,
     INSTANCE_EVENT['exists']: _process_exists
 }

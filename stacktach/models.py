@@ -173,6 +173,8 @@ class InstanceUsage(models.Model):
     os_distro = models.TextField(null=True, blank=True)
     os_version = models.TextField(null=True, blank=True)
     rax_options = models.TextField(null=True, blank=True)
+    last_notification_timestamp = models.DecimalField(
+        null=True, max_digits=20, decimal_places=6, db_index=True)
 
     def deployment(self):
         raws = RawData.objects.filter(request_id=self.request_id)

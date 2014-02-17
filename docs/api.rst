@@ -559,6 +559,7 @@ stacky/reports/search/
   :query period_end: end of period, which the report pertains to, in the following format: YYYY-MM-DD HH:MM[:ss[.uuuuuu]][TZ]
   :query created: the day, when the report was created, in the following format: YYYY-MM-DD
 
+
 stacky/show/<event_id>
 ======================
 
