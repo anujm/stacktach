@@ -101,7 +101,7 @@ def _verified_audit_base(base_query, exists_model):
 
     failed_query = Q(status=exists_model.FAILED)
     failed = exists_model.objects.filter(base_query & failed_query)
-    detail = [['Exist', e.id, e.fail_reason] for e in failed]
+    detail = [[e.id, e.fail_reason] for e in failed]
     return summary, detail
 
 
